@@ -1,4 +1,16 @@
 allow_embedding: false
+db_schema:
+  tbl_users:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: Username
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: Password
+      type: string
+    server: full
+    title: tbl_Users
 metadata: {title: cin7 update record}
 name: cin7_record_update
 package_name: CIN7_RecordUpdate
