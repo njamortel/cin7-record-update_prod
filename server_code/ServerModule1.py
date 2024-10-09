@@ -3,6 +3,7 @@ import json
 import csv
 import base64
 import requests
+from datetime import datetime
 
 progress = 0
 update_result = ""
@@ -20,14 +21,23 @@ def process_csv_and_update(file):
         purchase_order = {
             "id": rows["id"],
             "stage": rows["stage"],
-            "estimatedArrivalDate": rows["estimatedArrivalDate"],
-            "estimatedDeliveryDate": rows["estimatedDeliveryDate"]
+            "estimatedArrivalDate": format_date(rows["estimatedArrivalDate"]),
+            "estimatedDeliveryDate": format_date(rows["estimatedDeliveryDate"])
         }
         data.append(purchase_order)
 
     json_data = json.dumps({"purchase_orders": data}, indent=4)
     print("CSV processing completed. Starting update...")
     return update_purchase_orders(json_data)
+
+def format_date(date_str):
+    for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y'):
+        try:
+            date_obj = datetime.strptime(date_str, fmt)
+            return date_obj.strftime('%Y-%m-%dT%H:%M:%SZ')
+        except ValueError:
+            continue
+    return date_str  # Return the original string if it doesn't match any expected format
 
 def update_purchase_orders(json_data):
     global progress, update_result
@@ -45,6 +55,7 @@ def update_purchase_orders(json_data):
     updated_records = 0
 
     for i, order in enumerate(data["purchase_orders"], start=1):
+        
         print(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
         response = requests.post(endpoint_url, headers=headers, json=order)
         if response.status_code == 200:
