@@ -24,8 +24,8 @@ class Form1(Form1Template):
 
     def timer_1_tick(self, **event_args):
         self.progress = anvil.server.call('get_progress')
-        self.txtProgress.text = f"Progress: {self.progress}%"
-        if self.progress >= 100:
+        self.txtProgress.text = f"Progress: {self.progress:.2f}%"
+        if self.progress >= 100 or self.progress == 0:
             self.timer_1.enabled = False
             result = anvil.server.call('get_update_result')
             self.txtProgress.text = result

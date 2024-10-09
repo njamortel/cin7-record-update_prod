@@ -19,7 +19,7 @@ def process_csv_and_update(file):
 
     for rows in csv_reader:
         purchase_order = {
-            "id": rows["id"],
+            "id": int(rows["id"]),  # Ensure id is an integer
             "stage": rows["stage"],
             "estimatedArrivalDate": format_date(rows["estimatedArrivalDate"]),
             "estimatedDeliveryDate": format_date(rows["estimatedDeliveryDate"])
@@ -31,13 +31,11 @@ def process_csv_and_update(file):
     return update_purchase_orders(json_data)
 
 def format_date(date_str):
-    for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y'):
-        try:
-            date_obj = datetime.strptime(date_str, fmt)
-            return date_obj.strftime('%Y-%m-%dT%H:%M:%SZ')
-        except ValueError:
-            continue
-    return date_str  # Return the original string if it doesn't match any expected format
+    try:
+        date_obj = datetime.strptime(date_str, '%m/%d/%Y')
+        return date_obj.strftime('%Y-%m-%dT%H:%M:%SZ')
+    except ValueError:
+        return date_str  # Return the original string if it doesn't match the expected format
 
 def update_purchase_orders(json_data):
     global progress, update_result
@@ -55,22 +53,39 @@ def update_purchase_orders(json_data):
     updated_records = 0
 
     for i, order in enumerate(data["purchase_orders"], start=1):
+        # Validate JSON structure
+        if not isinstance(order, dict) or 'id' not in order or 'stage' not in order:
+            update_result = f"Invalid JSON structure for record {i}: {json.dumps(order, indent=4)}"
+            print(update_result)
+            return update_result
         
+        # Print the JSON payload for debugging
         print(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
+        
+        # Send the request
         response = requests.post(endpoint_url, headers=headers, json=order)
+        
+        # Print the response for debugging
+        print(f"Request payload: {json.dumps(order, indent=4)}")
+        print(f"Response status code: {response.status_code}")
+        print(f"Response content: {response.content}")
+        
         if response.status_code == 200:
             updated_records += 1
         else:
-            update_result = f"Error updating record {order['id']}: {response.text}"
+            progress = (i / total_records) * 100
+            anvil.server.call('update_progress', progress)
+            update_result = f"Response status code: {response.status_code}\nUpdating record {i}/{total_records}\nProgress: {progress:.2f}%\nFAILED: Error updating record {order['id']}: {response.text}"
             print(update_result)
             return update_result
+        
         progress = (i / total_records) * 100
         anvil.server.call('update_progress', progress)
         print(f"Updated {i}/{total_records} records. Progress: {progress}%")
 
     progress = 100  # Ensure progress is set to 100% when done
     anvil.server.call('update_progress', progress)
-    update_result = f"Process completed successfully. {updated_records} records updated."
+    update_result = f"Successfully updated {updated_records}/{total_records} records."
     print(update_result)
     return update_result
 
