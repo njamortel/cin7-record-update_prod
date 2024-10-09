@@ -1,5 +1,5 @@
-#from ._anvil_designer import Form1Template
-#from anvil import *
+from ._anvil_designer import Form1Template
+from anvil import *
 #import anvil.server
 
 
