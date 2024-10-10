@@ -57,7 +57,7 @@ def update_purchase_orders(json_data):
     Logs detailed information in case of errors.
     """
     global progress, update_result
-    api_key = '7f409f7b9f98499996bc905e83f19cfb'
+    api_key = '4cc465afd3534370bbc4431e770346e1'
     username = 'SignalPowerDelivUS'
     endpoint_url = "https://api.cin7.com/api/v1/PurchaseOrders"
     credentials = base64.b64encode(f'{username}:{api_key}'.encode('utf-8')).decode('utf-8')
