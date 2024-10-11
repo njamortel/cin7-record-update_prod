@@ -28,7 +28,7 @@ def process_csv_and_update(file):
     for rows in csv_reader:
         # Constructing each purchase_order object based on CSV row
         purchase_order = {
-            "Id": int(rows["id"]),  # Converting 'id' to integer
+            "id": int(rows["id"]),  # Converting 'id' to integer
             "stage": rows["stage"],  # Mapping 'stage' to 'Status'
             "estimatedArrivalDate": format_date(rows["estimatedArrivalDate"]),  # Correcting date formats
             "estimatedDeliveryDate": format_date(rows["estimatedDeliveryDate"])
