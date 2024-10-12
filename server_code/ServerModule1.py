@@ -18,7 +18,7 @@ def process_csv_and_update(file):
     """
     global progress
     progress = 0  # Reset progress
-    
+
     # Read the CSV file
     csv_data = file.get_bytes().decode('utf-8').splitlines()
     csv_reader = csv.DictReader(csv_data)
@@ -27,17 +27,17 @@ def process_csv_and_update(file):
     # Prepare JSON structure
     for rows in csv_reader:
         # Constructing each purchase_order object based on CSV row
-        purchase_order = {
+        purchase_order = [{
             "id": int(rows["id"]),  # Converting 'id' to integer
             "stage": rows["stage"],  # Mapping 'stage' to 'Status'
             "estimatedArrivalDate": format_date(rows["estimatedArrivalDate"]),  # Correcting date formats
             "estimatedDeliveryDate": format_date(rows["estimatedDeliveryDate"])
-        }
+        }]
         data.append(purchase_order)
 
     # Convert data to JSON structure expected by CIN7 API
     json_data = json.dumps({"purchase_orders": data}, indent=4)
-    
+
     # Start updating records
     return update_purchase_orders(json_data)
 
@@ -73,13 +73,13 @@ def update_purchase_orders(json_data):
     # Iterate over each purchase order and send to the API
     for i, order in enumerate(data["purchase_orders"], start=1):
         # Log the current order being processed
-        print(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
-        
+        append_to_log_textbox(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
+
         # Make the POST request to CIN7 API
         try:
             response = requests.post(endpoint_url, headers=headers, json=order)
             response.raise_for_status()  # Raise error for bad responses
-            
+
             if response.status_code == 200:
                 updated_records += 1
         except requests.exceptions.HTTPError as err:
@@ -88,30 +88,29 @@ def update_purchase_orders(json_data):
             progress = (i / total_records) * 100
             anvil.server.call('update_progress', progress)
             update_result = (f"HTTP error occurred: {err}\n"
-                             f"Error updating record {order['id']}:\n"
-                             f"Response Code: {response.status_code}\n"
-                             f"Response Message: {json.dumps(error_message, indent=4)}\n"
-                             f"Request Payload: {json.dumps(order, indent=4)}")
-            print(update_result)
+                                f"Error updating record {order['id']}:\n"
+                                f"Response Code: {response.status_code}\n"
+                                f"Response Message: {json.dumps(error_message, indent=4)}\n"
+                                f"Request Payload: {json.dumps(order, indent=4)}")
+            append_to_log_textbox(update_result)
             return update_result
         except Exception as err:
             # Handle any other exceptions
             update_result = f"Other error occurred: {err}"
-            print(update_result)
+            append_to_log_textbox(update_result)
             return update_result
-        
+
         # Update progress after each record
         progress = (i / total_records) * 100
         anvil.server.call('update_progress', progress)
-        print(f"Updated {i}/{total_records} records. Progress: {progress}%")
+        append_to_log_textbox(f"Updated {i}/{total_records} records. Progress: {progress}%")
 
     # Ensure the progress is 100% when done
     progress = 100
     anvil.server.call('update_progress', progress)
     update_result = f"Successfully updated {updated_records}/{total_records} records."
-    print(update_result)
+    append_to_log_textbox(update_result)
     return update_result
-
 
 @anvil.server.callable
 def update_progress(value):
@@ -136,3 +135,10 @@ def get_update_result():
     """
     global update_result
     return update_result
+
+@anvil.server.callable
+def append_to_log_textbox(message):
+    """
+    Appends a message to the txtLogOutput TextBox.
+    """
+    anvil.server.call('append_to_log_textbox', message)  # Replace 'txtLog' with the new name

@@ -16,10 +16,18 @@ components:
     type: Button
   - layout_properties: {grid_position: 'ZSCUPV,XIJEYL'}
     name: lblProgress
-    properties: {text: Progress Status}
+    properties: {text: 'Progress Status : '}
     type: Label
   - layout_properties: {grid_position: 'QUNNTU,TKLFQZ'}
     name: txtProgress
+    properties: {enabled: false}
+    type: TextBox
+  - layout_properties: {grid_position: 'UMTXBD,GXZUCS'}
+    name: label_1
+    properties: {text: 'App Console Log : '}
+    type: Label
+  - layout_properties: {grid_position: 'AOOETK,VZNTIM'}
+    name: txtLog
     properties: {enabled: false}
     type: TextBox
   layout_properties: {slot: default}

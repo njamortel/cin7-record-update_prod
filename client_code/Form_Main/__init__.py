@@ -28,8 +28,22 @@ class Form_Main(Form_MainTemplate):
         """Triggered every second to update progress"""
         self.progress = anvil.server.call('get_progress')
         self.txtProgress.text = f"Progress: {self.progress:.2f}%"
-        
+
         if self.progress >= 100 or self.progress == 0:  # Stop when complete or failed
             self.timer_1.enabled = False
             result = anvil.server.call('get_update_result')
             self.txtProgress.text = result
+
+    def btnProcess_click(self, **event_args):
+        # Triggered when the "Process" button is clicked
+        file = self.file_loader_1.file
+        if file:
+            try:
+                result = anvil.server.call('process_csv_and_update', file)
+                self.append_to_log_textbox(result)  # Update the log TextBox
+            except Exception as e:
+                self.append_to_log_textbox(f"Error: {str(e)}")
+
+    def append_to_log_textbox(self, message):
+        """Appends a message to the txtLogOutput TextBox"""
+        self.txtLogOutput.text += message + '\n'
