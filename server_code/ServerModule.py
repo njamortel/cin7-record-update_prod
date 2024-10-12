@@ -11,6 +11,11 @@ log_messages = []
 progress = 0
 update_result = ""
 
+def append_to_log_message_queue(message):
+    global log_messages
+    log_messages.append(message)
+    print(message)  # Print to server logs for debugging
+
 @anvil.server.callable
 def process_csv_and_update(file):
     global progress
@@ -76,7 +81,10 @@ def update_purchase_orders(json_data):
             else:
                 append_to_log_message_queue(f"Failed to update record {order['id']}")
         except requests.exceptions.HTTPError as err:
-            error_message = response.json() if response.headers.get('Content-Type') == 'application/json' else response.text
+            try:
+                error_message = response.json() if response.headers.get('Content-Type') == 'application/json' else response.text
+            except ValueError:
+                error_message = response.text
             append_to_log_message_queue(f"HTTP error occurred: {err}\n"
                                          f"Error updating record {order['id']}:\n"
                                          f"Response Code: {response.status_code}\n"
@@ -114,17 +122,7 @@ def get_update_result():
     return update_result
 
 @anvil.server.callable
-def append_to_log_message_queue(message):
+def get_log_messages():
     global log_messages
-    log_messages.append(message)
-    print(message)  # Print to server logs for debugging
-
-@anvil.server.callable
-def process_log_messages():
-    global log_messages
-    if log_messages:
-        messages = log_messages.copy()
-        log_messages.clear()
-        txt_log_output = anvil.server.get_widget('txtLogOutput')
-        for message in messages:
-            txt_log_output.text += message + '\n'
+    append_to_log_message_queue("get_log_messages called")
+    return log_messages

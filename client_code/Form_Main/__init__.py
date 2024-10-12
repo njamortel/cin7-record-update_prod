@@ -40,7 +40,17 @@ class Form_Main(Form_MainTemplate):
                 result = anvil.server.call('get_update_result')
                 self.txtProgress.text = result
                 self.rich_text_Log.content += result + "\n"
+            elif self.progress == 0:
+                self.timer_1.enabled = False
+                self.txtProgress.text = "Processing not started or failed."
+                self.rich_text_Log.content += "Processing not started or failed.\n"
+              
+              
         except Exception as e:
             self.txtProgress.text = f"Error: {str(e)}"
             self.rich_text_Log.content += f"Error: {str(e)}\n"
             self.timer_1.enabled = False
+    def process_log_messages(self):
+        log_messages = anvil.server.call('get_log_messages')
+        for message in log_messages:
+            self.rich_text_Log.content += message + '\n'
