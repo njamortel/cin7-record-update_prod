@@ -113,11 +113,13 @@ def get_update_result():
     append_to_log_message_queue("get_update_result called")
     return update_result
 
+@anvil.server.callable
 def append_to_log_message_queue(message):
     global log_messages
     log_messages.append(message)
     print(message)  # Print to server logs for debugging
 
+@anvil.server.callable
 def process_log_messages():
     global log_messages
     if log_messages:
