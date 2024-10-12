@@ -40,10 +40,6 @@ class Form_Main(Form_MainTemplate):
         if file:
             try:
                 result = anvil.server.call('process_csv_and_update', file)
-                self.append_to_log_textbox(result)  # Update the log TextBox
+                anvil.server.call('append_to_log_message_queue', result)  # Add the result to the queue
             except Exception as e:
-                self.append_to_log_textbox(f"Error: {str(e)}")
-
-    def append_to_log_textbox(self, message):
-        """Appends a message to the txtLogOutput TextBox"""
-        self.txtLogOutput.text += message + '\n'
+                anvil.server.call('append_to_log_message_queue', f"Error: {str(e)}")

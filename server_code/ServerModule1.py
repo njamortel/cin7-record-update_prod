@@ -6,9 +6,8 @@ import requests
 from datetime import datetime
 import time
 
-# Global variables to track progress and result
-progress = 0
-update_result = ""
+# Global variable to store log messages
+log_messages = []
 
 @anvil.server.callable
 def process_csv_and_update(file):
@@ -73,7 +72,7 @@ def update_purchase_orders(json_data):
     # Iterate over each purchase order and send to the API
     for i, order in enumerate(data["purchase_orders"], start=1):
         # Log the current order being processed
-        append_to_log_textbox(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
+        append_to_log_message_queue(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
 
         # Make the POST request to CIN7 API
         try:
@@ -87,30 +86,23 @@ def update_purchase_orders(json_data):
             error_message = response.json() if response.headers.get('Content-Type') == 'application/json' else response.text
             progress = (i / total_records) * 100
             anvil.server.call('update_progress', progress)
-            update_result = (f"HTTP error occurred: {err}\n"
-                                f"Error updating record {order['id']}:\n"
-                                f"Response Code: {response.status_code}\n"
-                                f"Response Message: {json.dumps(error_message, indent=4)}\n"
-                                f"Request Payload: {json.dumps(order, indent=4)}")
-            append_to_log_textbox(update_result)
-            return update_result
+            append_to_log_message_queue(f"HTTP error occurred: {err}\n"
+                                         f"Error updating record {order['id']}:\n"
+                                         f"Response Code: {response.status_code}\n"
+                                         f"Response Message: {json.dumps(error_message, indent=4)}\n"
+                                         f"Request Payload: {json.dumps(order, indent=4)}")
         except Exception as err:
             # Handle any other exceptions
-            update_result = f"Other error occurred: {err}"
-            append_to_log_textbox(update_result)
-            return update_result
+            append_to_log_message_queue(f"Other error occurred: {err}")
 
         # Update progress after each record
         progress = (i / total_records) * 100
         anvil.server.call('update_progress', progress)
-        append_to_log_textbox(f"Updated {i}/{total_records} records. Progress: {progress}%")
 
     # Ensure the progress is 100% when done
     progress = 100
     anvil.server.call('update_progress', progress)
-    update_result = f"Successfully updated {updated_records}/{total_records} records."
-    append_to_log_textbox(update_result)
-    return update_result
+    append_to_log_message_queue(f"Successfully updated {updated_records}/{total_records} records.")
 
 @anvil.server.callable
 def update_progress(value):
@@ -137,8 +129,22 @@ def get_update_result():
     return update_result
 
 @anvil.server.callable
-def append_to_log_textbox(message):
+def append_to_log_message_queue(message):
     """
-    Appends a message to the txtLogOutput TextBox.
+    Adds a message to the log message queue.
     """
-    anvil.server.call('append_to_log_textbox', message)  # Replace 'txtLog' with the new name
+    global log_messages
+    log_messages.append(message)
+
+@anvil.server.callable
+def process_log_messages():
+    """
+    Periodically checks the message queue and updates the txtLogOutput TextBox.
+    """
+    global log_messages
+    if log_messages:
+        messages = log_messages.copy()  # Avoid modifying the queue while iterating
+        log_messages.clear()  # Clear the queue after processing
+        txt_log_output = anvil.server.get_widget('txtLogOutput')
+        for message in messages:
+            txt_log_output.text += message + '\n'
