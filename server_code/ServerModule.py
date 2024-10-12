@@ -8,54 +8,48 @@ import time
 
 # Global variable to store log messages
 log_messages = []
+progress = 0
+update_result = ""
 
 @anvil.server.callable
 def process_csv_and_update(file):
-    """
-    Process the uploaded CSV file, convert it into JSON format,
-    and update the records through CIN7 API.
-    """
     global progress
     progress = 0  # Reset progress
+    append_to_log_message_queue("process_csv_and_update called")
 
-    # Read the CSV file
-    csv_data = file.get_bytes().decode('utf-8').splitlines()
-    csv_reader = csv.DictReader(csv_data)
-    data = []
+    try:
+        # Read the CSV file
+        csv_data = file.get_bytes().decode('utf-8').splitlines()
+        csv_reader = csv.DictReader(csv_data)
+        data = []
 
-    # Prepare JSON structure
-    for rows in csv_reader:
-        # Constructing each purchase_order object based on CSV row
-        purchase_order = [{
-            "id": int(rows["id"]),  # Converting 'id' to integer
-            "stage": rows["stage"],  # Mapping 'stage' to 'Status'
-            "estimatedArrivalDate": format_date(rows["estimatedArrivalDate"]),  # Correcting date formats
-            "estimatedDeliveryDate": format_date(rows["estimatedDeliveryDate"])
-        }]
-        data.append(purchase_order)
+        # Prepare JSON structure
+        for row in csv_reader:
+            purchase_order = [{
+                "id": int(row["id"]),
+                "stage": row["stage"],
+                "estimatedArrivalDate": format_date(row["estimatedArrivalDate"]),
+                "estimatedDeliveryDate": format_date(row["estimatedDeliveryDate"])
+            }]
+            data.append(purchase_order)
 
-    # Convert data to JSON structure expected by CIN7 API
-    json_data = json.dumps({"purchase_orders": data}, indent=4)
-
-    # Start updating records
-    return update_purchase_orders(json_data)
+        json_data = json.dumps({"purchase_orders": data}, indent=4)
+        append_to_log_message_queue("CSV file processed successfully")
+        return update_purchase_orders(json_data)
+    except Exception as e:
+        append_to_log_message_queue(f"Error processing CSV: {str(e)}")
+        return f"Error processing CSV: {str(e)}"
 
 def format_date(date_str):
-    """
-    Converts date from MM/DD/YYYY format to the ISO 8601 format required by the API.
-    """
     try:
         date_obj = datetime.strptime(date_str, '%m/%d/%Y')
         return date_obj.strftime('%Y-%m-%dT%H:%M:%SZ')
     except ValueError:
-        return date_str  # Return original string if format is incorrect
+        return date_str
 
 def update_purchase_orders(json_data):
-    """
-    Sends the JSON data to the CIN7 API to update purchase orders and tracks progress.
-    Logs detailed information in case of errors.
-    """
     global progress, update_result
+    append_to_log_message_queue("update_purchase_orders called")
     api_key = '4cc465afd3534370bbc4431e770346e1'
     username = 'SignalPowerDelivUS'
     endpoint_url = "https://api.cin7.com/api/v1/PurchaseOrders"
@@ -69,82 +63,66 @@ def update_purchase_orders(json_data):
     total_records = len(data["purchase_orders"])
     updated_records = 0
 
-    # Iterate over each purchase order and send to the API
     for i, order in enumerate(data["purchase_orders"], start=1):
-        # Log the current order being processed
         append_to_log_message_queue(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
 
-        # Make the POST request to CIN7 API
         try:
             response = requests.post(endpoint_url, headers=headers, json=order)
-            response.raise_for_status()  # Raise error for bad responses
+            response.raise_for_status()
 
             if response.status_code == 200:
                 updated_records += 1
+                append_to_log_message_queue(f"Successfully updated record {order['id']}")
+            else:
+                append_to_log_message_queue(f"Failed to update record {order['id']}")
         except requests.exceptions.HTTPError as err:
-            # Log more details about the error and response
             error_message = response.json() if response.headers.get('Content-Type') == 'application/json' else response.text
-            progress = (i / total_records) * 100
-            anvil.server.call('update_progress', progress)
             append_to_log_message_queue(f"HTTP error occurred: {err}\n"
                                          f"Error updating record {order['id']}:\n"
                                          f"Response Code: {response.status_code}\n"
                                          f"Response Message: {json.dumps(error_message, indent=4)}\n"
                                          f"Request Payload: {json.dumps(order, indent=4)}")
         except Exception as err:
-            # Handle any other exceptions
             append_to_log_message_queue(f"Other error occurred: {err}")
 
-        # Update progress after each record
         progress = (i / total_records) * 100
         anvil.server.call('update_progress', progress)
+        append_to_log_message_queue(f"Progress updated to {progress}%")
 
-    # Ensure the progress is 100% when done
     progress = 100
     anvil.server.call('update_progress', progress)
-    append_to_log_message_queue(f"Successfully updated {updated_records}/{total_records} records.")
+    update_result = f"Successfully updated {updated_records}/{total_records} records."
+    append_to_log_message_queue(update_result)
+    return update_result
 
 @anvil.server.callable
 def update_progress(value):
-    """
-    Function to update the progress of the record update process.
-    """
     global progress
     progress = value
+    append_to_log_message_queue(f"update_progress called with value: {value}")
 
 @anvil.server.callable
 def get_progress():
-    """
-    Returns the current progress of the update process.
-    """
     global progress
+    append_to_log_message_queue("get_progress called")
     return progress
 
 @anvil.server.callable
 def get_update_result():
-    """
-    Returns the final result message after processing is complete.
-    """
     global update_result
+    append_to_log_message_queue("get_update_result called")
     return update_result
 
-@anvil.server.callable
 def append_to_log_message_queue(message):
-    """
-    Adds a message to the log message queue.
-    """
     global log_messages
     log_messages.append(message)
+    print(message)  # Print to server logs for debugging
 
-@anvil.server.callable
 def process_log_messages():
-    """
-    Periodically checks the message queue and updates the txtLogOutput TextBox.
-    """
     global log_messages
     if log_messages:
-        messages = log_messages.copy()  # Avoid modifying the queue while iterating
-        log_messages.clear()  # Clear the queue after processing
+        messages = log_messages.copy()
+        log_messages.clear()
         txt_log_output = anvil.server.get_widget('txtLogOutput')
         for message in messages:
             txt_log_output.text += message + '\n'
