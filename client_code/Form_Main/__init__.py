@@ -17,8 +17,8 @@ class Form_Main(Form_MainTemplate):
 
     def start_process_click(self, **event_args):
         if self.csv_file:
-            self.txtProgress.text = "Processing started..."
-            self.rich_text_Log.content += "Processing started...\n"
+            self.txtProgress.text = "Processing started"
+            self.rich_text_Log.content += "Processing started\n"
             try:
                 anvil.server.call('process_csv_and_update', self.csv_file)
                 self.timer_1.enabled = True  # Start the timer to track progress
