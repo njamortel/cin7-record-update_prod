@@ -32,12 +32,12 @@ def process_csv_and_update(file):
     for row in csv_reader:
       try:
         # Convert `id` to integer before using it as an index
-        purchase_order = {
+        purchase_order = [{
           "id": int(row["id"]),
           "stage": row["stage"],
           "estimatedArrivalDate": format_date(row["estimatedArrivalDate"]),
           "estimatedDeliveryDate": format_date(row["estimatedDeliveryDate"])
-        }
+        }]
         data.append(purchase_order)
       except ValueError as e:
         append_to_log_message_queue(f"Error processing row: {row} - Invalid ID")
