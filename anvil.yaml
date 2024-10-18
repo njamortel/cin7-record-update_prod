@@ -12,7 +12,7 @@ db_schema:
     server: full
     title: tbl_Users
 metadata: {title: cin7 update record}
-name: cin7_record_update
+name: cin7_record_update_prod
 package_name: CIN7_RecordUpdate
 runtime_options:
   client_version: '3'
