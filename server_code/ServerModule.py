@@ -99,30 +99,4 @@ def update_purchase_orders(json_data):
 
     progress = 100
     anvil.server.call('update_progress', progress)
-    update_result = f"Successfully updated {updated_records}/{total_records} records."
-    append_to_log_message_queue(update_result)
-    return update_result
-
-@anvil.server.callable
-def update_progress(value):
-    global progress
-    progress = value
-    append_to_log_message_queue(f"update_progress called with value: {value}")
-
-@anvil.server.callable
-def get_progress():
-    global progress
-    append_to_log_message_queue("get_progress called")
-    return progress
-
-@anvil.server.callable
-def get_update_result():
-    global update_result
-    append_to_log_message_queue("get_update_result called")
-    return update_result
-
-@anvil.server.callable
-def get_log_messages():
-    global log_messages
-    append_to_log_message_queue("get_log_messages called")
-    return log_messages
+    update_result = f"Successfully updated {updated_records}/{total_records} records.
