@@ -30,13 +30,17 @@ def process_csv_and_update(file):
 
     # Prepare JSON structure
     for row in csv_reader:
-      purchase_order = {
+      try:
+        # Convert `id` to integer before using it as an index
+        purchase_order = {
           "id": int(row["id"]),
           "stage": row["stage"],
           "estimatedArrivalDate": format_date(row["estimatedArrivalDate"]),
           "estimatedDeliveryDate": format_date(row["estimatedDeliveryDate"])
-      }
-      data.append(purchase_order)
+        }
+        data.append(purchase_order)
+      except ValueError as e:
+        append_to_log_message_queue(f"Error processing row: {row} - Invalid ID")
 
     json_data = json.dumps({"purchase_orders": data}, indent=4)
     append_to_log_message_queue("CSV file processed successfully")
@@ -60,22 +64,19 @@ def update_purchase_orders(json_data):
   endpoint_url = "https://api.cin7.com/api/v1/PurchaseOrders"
   credentials = base64.b64encode(f'{username}:{api_key}'.encode('utf-8')).decode('utf-8')
   headers = {
-      'Authorization': 'Basic ' + credentials,
-      'Content-Type': 'application/json'
+    'Authorization': 'Basic ' + credentials,
+    'Content-Type': 'application/json'
   }
 
   data = json.loads(json_data)
   total_records = len(data["purchase_orders"])
   updated_records = 0
 
-  for order in data["purchase_orders"]:
-    append_to_log_message_queue(f"Updating record: {json.dumps(order, indent=4)}")
+  for i, order in enumerate(data["purchase_orders"], start=1):
+    append_to_log_message_queue(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
 
     try:
-      #response = requests.post(endpoint_url, headers=headers, json=order)
-      # Wrap the order object in a list
-      data_to_send = [order]
-      response = requests.post(endpoint_url, headers=headers, json=data_to_send)
+      response = requests.post(endpoint_url, headers=headers, json=order)
       response.raise_for_status()
 
       if response.status_code == 200:
@@ -89,22 +90,17 @@ def update_purchase_orders(json_data):
       except ValueError:
         error_message = response.text
       append_to_log_message_queue(f"HTTP error occurred: {err}\n"
-                                 f"Error updating record {order['id']}:\n"
-                                 f"Response Code: {response.status_code}\n"
-                                 f"Response Message: {json.dumps(error_message, indent=4)}\n"
-                                 f"Request Payload: {json.dumps(order, indent=4)}")
+                                  f"Error updating record {order['id']}:\n"
+                                  f"Response Code: {response.status_code}\n"
+                                  f"Response Message: {json.dumps(error_message, indent=4)}\n"
+                                  f"Request Payload: {json.dumps(order, indent=4)}")
     except Exception as err:
       append_to_log_message_queue(f"Other error occurred: {err}")
 
-    progress = (updated_records / total_records) * 100
+    progress = (i / total_records) * 100
     anvil.server.call('update_progress', progress)
     append_to_log_message_queue(f"Progress updated to {progress}%")
 
+  progress = 100
+  anvil.server.call('update_progress', progress)
   update_result = f"Successfully updated {updated_records}/{total_records} records."
-  anvil.server.call('update_progress', 100)
-
-@anvil.server.callable
-def update_progress(progress_value):
-  global progress
-  progress = progress_value
-  anvil.server.call('update_client_progress', progress_value)

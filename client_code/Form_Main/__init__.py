@@ -26,8 +26,8 @@ class Form_Main(Form_MainTemplate):
 
   def timer_1_tick(self, **event_args):
     """Triggered every second to update progress"""
-    self.progress = anvil.server.call('get_progress')  # Retrieve progress from server
-    self.update_client_progress(self.progress)  # Call the client-side function to update UI
+    self.progress = anvil.server.call('get_progress')
+    self.txtProgress.text = f"Progress: {self.progress:.2f}%"
 
     if self.progress >= 100 or self.progress == 0:  # Stop when complete or failed
       self.timer_1.enabled = False
@@ -47,8 +47,3 @@ class Form_Main(Form_MainTemplate):
   def txtLog(self, message):
     """Appends a message to the txtLog TextBox"""
     self.txtLogOutput.text += message + '\n'
-
-  @anvil.server.callable  # Ensure the decorator is placed correctly
-  def update_client_progress(self, progress_value):
-    """Sends progress to the client-side UI"""
-    self.txtProgress.text = f"Progress: {progress_value:.2f}%"
