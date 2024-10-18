@@ -1,4 +1,4 @@
-allow_embedding: false
+allow_embedding: true
 db_schema:
   tbl_users:
     client: none
