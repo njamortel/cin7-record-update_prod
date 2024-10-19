@@ -4,7 +4,6 @@ import csv
 import base64
 import requests
 from datetime import datetime
-import time
 
 # Global variable to store log messages
 log_messages = []
@@ -30,17 +29,21 @@ def process_csv_and_update(file):
 
         # Prepare JSON structure
         for row in csv_reader:
-            purchase_order = [{
+            purchase_order = {
                 "id": int(row["id"]),
                 "stage": row["stage"],
                 "estimatedArrivalDate": format_date(row["estimatedArrivalDate"]),
                 "estimatedDeliveryDate": format_date(row["estimatedDeliveryDate"])
-            }]
+            }
             data.append(purchase_order)
 
         json_data = json.dumps({"purchase_orders": data}, indent=4)
         append_to_log_message_queue("CSV file processed successfully")
-        return update_purchase_orders(json_data)
+        
+        # Call function to update purchase orders
+        result = update_purchase_orders(json_data)
+
+        return result
     except Exception as e:
         append_to_log_message_queue(f"Error processing CSV: {str(e)}")
         return f"Error processing CSV: {str(e)}"
@@ -55,6 +58,8 @@ def format_date(date_str):
 def update_purchase_orders(json_data):
     global progress, update_result
     append_to_log_message_queue("update_purchase_orders called")
+    
+    # API details
     api_key = '4cc465afd3534370bbc4431e770346e1'
     username = 'SignalPowerDelivUS'
     endpoint_url = "https://api.cin7.com/api/v1/PurchaseOrders"
@@ -64,65 +69,42 @@ def update_purchase_orders(json_data):
         'Content-Type': 'application/json'
     }
 
-    data = json.loads(json_data)
-    total_records = len(data["purchase_orders"])
-    updated_records = 0
+    try:
+        # Send all purchase orders in one bulk request
+        data = json.loads(json_data)
+        total_records = len(data["purchase_orders"])
 
-    for i, order in enumerate(data["purchase_orders"], start=1):
-        append_to_log_message_queue(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
+        append_to_log_message_queue(f"Sending bulk update for {total_records} records.")
+        response = requests.put(endpoint_url, headers=headers, json=data["purchase_orders"])
+        response.raise_for_status()
 
+        if response.status_code == 200:
+            update_result = f"Successfully updated {total_records} records."
+            
+            append_to_log_message_queue(update_result)
+        else:
+            update_result = f"Failed to update records. Response Code: {response.status_code}"
+          
+    except requests.exceptions.HTTPError as err:
         try:
-            response = requests.post(endpoint_url, headers=headers, json=order)
-            response.raise_for_status()
+            error_message = response.json() if response.headers.get('Content-Type') == 'application/json' else response.text
+        except ValueError:
+            error_message = response.text
+        append_to_log_message_queue(f"HTTP error occurred: {err}\n"
+                                    f"Response Code: {response.status_code}\n"
+                                    f"Response Message: {json.dumps(error_message, indent=4)}")
+    except Exception as err:
+        append_to_log_message_queue(f"Other error occurred: {err}")
 
-            if response.status_code == 200:
-                updated_records += 1
-                append_to_log_message_queue(f"Successfully updated record {order['id']}")
-            else:
-                append_to_log_message_queue(f"Failed to update record {order['id']}")
-        except requests.exceptions.HTTPError as err:
-            try:
-                error_message = response.json() if response.headers.get('Content-Type') == 'application/json' else response.text
-            except ValueError:
-                error_message = response.text
-            append_to_log_message_queue(f"HTTP error occurred: {err}\n"
-                                         f"Error updating record {order['id']}:\n"
-                                         f"Response Code: {response.status_code}\n"
-                                         f"Response Message: {json.dumps(error_message, indent=4)}\n"
-                                         f"Request Payload: {json.dumps(order, indent=4)}")
-        except Exception as err:
-            append_to_log_message_queue(f"Other error occurred: {err}")
-
-        progress = (i / total_records) * 100
-        anvil.server.call('update_progress', progress)
-        append_to_log_message_queue(f"Progress updated to {progress}%")
-
+    # Update progress to 100% since we are doing it in bulk
     progress = 100
-    anvil.server.call('update_progress', progress)
-    update_result = f"Successfully updated {updated_records}/{total_records} records."
-    append_to_log_message_queue(update_result)
-    return update_result
+    append_to_log_message_queue("Progress updated to 100%")
 
-@anvil.server.callable
-def update_progress(value):
-    global progress
-    progress = value
-    append_to_log_message_queue(f"update_progress called with value: {value}")
-
-@anvil.server.callable
-def get_progress():
-    global progress
-    append_to_log_message_queue("get_progress called")
-    return progress
-
-@anvil.server.callable
-def get_update_result():
-    global update_result
-    append_to_log_message_queue("get_update_result called")
     return update_result
 
 @anvil.server.callable
 def get_log_messages():
     global log_messages
     append_to_log_message_queue("get_log_messages called")
+    print(log_messages)
     return log_messages
