@@ -68,30 +68,31 @@ def update_purchase_orders(json_data):
     total_records = len(data["purchase_orders"])
     updated_records = 0
 
-    for i, order in enumerate(data["purchase_orders"], start=1):
-        append_to_log_message_queue(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
+    for i, order_list in enumerate(data["purchase_orders"], start=1):
+    order = order_list[0]  # Correct indentation for the loop
+    append_to_log_message_queue(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
+    
+    try:  # The `try` block should be at the same level as the code inside the loop
+        response = requests.post(endpoint_url, headers=headers, json=order)
+        response.raise_for_status()
 
+        if response.status_code == 200:
+            updated_records += 1
+            append_to_log_message_queue(f"Successfully updated record {order['id']}")
+        else:
+            append_to_log_message_queue(f"Failed to update record {order['id']}")
+    except requests.exceptions.HTTPError as err:
         try:
-            response = requests.post(endpoint_url, headers=headers, json=order)
-            response.raise_for_status()
-
-            if response.status_code == 200:
-                updated_records += 1
-                append_to_log_message_queue(f"Successfully updated record {order['id']}")
-            else:
-                append_to_log_message_queue(f"Failed to update record {order['id']}")
-        except requests.exceptions.HTTPError as err:
-            try:
-                error_message = response.json() if response.headers.get('Content-Type') == 'application/json' else response.text
-            except ValueError:
-                error_message = response.text
-            append_to_log_message_queue(f"HTTP error occurred: {err}\n"
-                                         f"Error updating record {order['id']}:\n"
-                                         f"Response Code: {response.status_code}\n"
-                                         f"Response Message: {json.dumps(error_message, indent=4)}\n"
-                                         f"Request Payload: {json.dumps(order, indent=4)}")
-        except Exception as err:
-            append_to_log_message_queue(f"Other error occurred: {err}")
+            error_message = response.json() if response.headers.get('Content-Type') == 'application/json' else response.text
+        except ValueError:
+            error_message = response.text
+        append_to_log_message_queue(f"HTTP error occurred: {err}\n"
+                                     f"Error updating record {order['id']}:\n"
+                                     f"Response Code: {response.status_code}\n"
+                                     f"Response Message: {json.dumps(error_message, indent=4)}\n"
+                                     f"Request Payload: {json.dumps(order, indent=4)}")
+    except Exception as err:
+        append_to_log_message_queue(f"Other error occurred: {err}")
 
         progress = (i / total_records) * 100
         anvil.server.call('update_progress', progress)
