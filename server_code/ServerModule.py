@@ -69,7 +69,7 @@ def update_purchase_orders(json_data):
     updated_records = 0
 
     for i, order_list in enumerate(data["purchase_orders"], start=1):
-    order = order_list[0]  # Correct indentation for the loop
+     order = order_list[0]
     append_to_log_message_queue(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
     
     try:  # The `try` block should be at the same level as the code inside the loop
