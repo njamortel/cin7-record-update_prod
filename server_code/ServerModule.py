@@ -65,12 +65,12 @@ def update_purchase_orders(json_data):
     }
 
     data = json.loads(json_data)
-    total_records = len(data["purchase_orders"])
+    # total_records = len(data["purchase_orders"])
+    total_records = len(data)
     updated_records = 0
 
-    for i, order_list in enumerate(data["purchase_orders"], start=1):
-     order = order_list[0]
-    append_to_log_message_queue(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
+    for i, order in enumerate(data, start=1):
+      append_to_log_message_queue(f"Updating record {i}/{total_records}: {json.dumps(order, indent=4)}")
     
     try:  # The `try` block should be at the same level as the code inside the loop
         response = requests.post(endpoint_url, headers=headers, json=order)
