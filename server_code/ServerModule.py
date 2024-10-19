@@ -31,7 +31,7 @@ def process_csv_and_update(file):
         # Prepare JSON structure
         for row in csv_reader:
             purchase_order = [{
-                "id": row["id"],
+                "id": int(row["id"]),
                 "stage": row["stage"],
                 "estimatedArrivalDate": format_date(row["estimatedArrivalDate"]),
                 "estimatedDeliveryDate": format_date(row["estimatedDeliveryDate"])
