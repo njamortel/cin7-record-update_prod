@@ -7,11 +7,12 @@ import requests
 from datetime import datetime
 import asyncio
 import aiohttp
+from anvil.tables import app_tables 
 
-# Global variable to store log messages
 log_messages = []
 progress = 0
 update_result = ""
+ki = ""
 
 def append_to_log_message_queue(message):
     global log_messages
@@ -21,8 +22,7 @@ def append_to_log_message_queue(message):
 @anvil.server.callable
 def process_csv_and_update(file):
     # Launch background task to process CSV
-    task = anvil.server.launch_background_task('background_csv_processing', file)
-    return task.get_id()  # Return task ID to track progress
+    anvil.server.launch_background_task('background_csv_processing', file)
 
 @anvil.server.background_task
 def background_csv_processing(file):
@@ -49,13 +49,27 @@ def background_csv_processing(file):
         
         # Call the asynchronous function for updating
         asyncio.run(update_purchase_orders(json_data))
-
+      
+        # Save the result and date to the database
+        save_result_to_database(update_result)
+      
         return update_result
+      
     except Exception as e:
         error_message = f"Error processing CSV: {str(e)}"
         append_to_log_message_queue(error_message)
         return error_message
 
+def save_result_to_database(result):
+    # Save the result and the current date to the database
+  
+    formatted_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    app_tables.logs.add_row(
+        result=result,
+        date=formatted_date
+    )
+    append_to_log_message_queue("Result saved to the database.")
+  
 def format_date(date_str):
     try:
         date_obj = datetime.strptime(date_str, '%m/%d/%Y')
@@ -85,8 +99,7 @@ async def update_purchase_orders(json_data):
         # Use aiohttp for asynchronous HTTP request
         async with aiohttp.ClientSession() as session:
             async with session.put(endpoint_url, headers=headers, json=data["purchase_orders"]) as response:
-                response_text = await response.text()
-
+              
                 if response.status == 200:
                     update_result = f"Successfully updated {total_records} records."
                     append_to_log_message_queue(update_result)
@@ -111,3 +124,12 @@ def get_log_messages():
     global log_messages
     append_to_log_message_queue("get_log_messages called")
     return log_messages
+
+@anvil.server.callable
+def test(status):
+    global ki  
+    ki = status
+  
+@anvil.server.callable
+def stat():
+  return 'Success! Your file is being uploaded in the background.'
