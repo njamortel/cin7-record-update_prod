@@ -27,7 +27,7 @@ db_schema:
     server: full
     title: Users
 metadata: {title: cin7 update record}
-name: cin7_record_update_prod
+name: cin7_record_update_prodv1
 package_name: CIN7_RecordUpdate
 runtime_options:
   client_version: '3'
